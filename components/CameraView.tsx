@@ -1,13 +1,15 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { useStore } from '@/lib/store'; // adjust to match Labiba's store export
+import { MAX_PHOTOS, useBooth } from '@/lib/store';
 
 export default function CameraView() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [facing, setFacing] = useState<'user' | 'environment'>('user');
   const [error, setError] = useState<string | null>(null);
-  const addPhoto = useStore((s: any) => s.addPhoto);
+  const addPhoto = useBooth((s) => s.addPhoto);
+  const count = useBooth((s) => s.photos.length);
+  const full = count >= MAX_PHOTOS;
 
   useEffect(() => {
     let cancelled = false;
@@ -35,7 +37,7 @@ export default function CameraView() {
 
   function capture() {
     const v = videoRef.current;
-    if (!v || !v.videoWidth) return;
+    if (!v || !v.videoWidth || full) return;
     const c = document.createElement('canvas');
     c.width = v.videoWidth;
     c.height = v.videoHeight;
@@ -50,7 +52,7 @@ export default function CameraView() {
 
   function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || full) return;
     const r = new FileReader();
     r.onload = () => addPhoto(r.result as string);
     r.readAsDataURL(file);
@@ -58,26 +60,48 @@ export default function CameraView() {
   }
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col items-center gap-4">
       {error ? (
-        <p className="rounded-xl bg-pink-100 p-4 text-center text-sm">{error}</p>
+        <p className="rounded-xl bg-blush p-4 text-center text-sm">{error}</p>
       ) : (
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted
-          className="w-full max-w-md rounded-2xl bg-black"
+          className="aspect-[4/3] w-full rounded-2xl bg-black object-cover"
           style={{ transform: facing === 'user' ? 'scaleX(-1)' : 'none' }}
         />
       )}
-      <div className="flex gap-2">
-        {!error && <button onClick={capture} className="rounded-full bg-pink-500 px-6 py-2 text-white">Capture</button>}
-        {!error && <button onClick={() => setFacing(facing === 'user' ? 'environment' : 'user')} className="rounded-full border px-4 py-2">Flip camera</button>}
-        <label className="cursor-pointer rounded-full border px-4 py-2">
+      <div className="flex items-center gap-3">
+        {!error && (
+          <button
+            onClick={() => setFacing(facing === 'user' ? 'environment' : 'user')}
+            className="rounded-full bg-blush px-4 py-2 font-heading text-sm"
+          >
+            Flip camera
+          </button>
+        )}
+        {!error && (
+          <button
+            onClick={capture}
+            disabled={full}
+            className="rounded-full bg-berry px-8 py-3 font-heading text-white shadow-lg transition hover:scale-105 disabled:opacity-40"
+          >
+            Capture
+          </button>
+        )}
+        <label
+          className={`rounded-full bg-blush px-4 py-2 font-heading text-sm ${
+            full ? 'opacity-40' : 'cursor-pointer'
+          }`}
+        >
           Upload
-          <input type="file" accept="image/*" hidden onChange={onUpload} />
+          <input type="file" accept="image/*" hidden disabled={full} onChange={onUpload} />
         </label>
+        <span className="w-12 font-heading text-lg">
+          {count}/{MAX_PHOTOS}
+        </span>
       </div>
     </div>
   );
