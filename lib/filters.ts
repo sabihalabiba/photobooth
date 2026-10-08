@@ -1,4 +1,5 @@
-export type FilterName = 'none' | 'bw' | 'vintage' | 'warm' | 'cool';
+// notun
+import type { FilterName } from './store';
 
 export const CSS_FILTERS: Record<FilterName, string> = {
   none: 'none',

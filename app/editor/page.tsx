@@ -6,9 +6,29 @@ import StripCanvas from "@/components/StripCanvas";
 import EditorToolbar from "@/components/EditorToolbar";
 import { STARTER_STICKERS } from "@/lib/stickers";
 import { useBooth } from "@/lib/store";
+import type { FilterName } from "@/lib/store";
+import { downloadStrip } from "@/lib/renderStrip";
+
+const FILTER_MAP: Record<string, FilterName> = {
+  None: "none",
+  "B&W": "bw",
+  Vintage: "vintage",
+  Warm: "warm",
+  Cool: "cool",
+};
 
 export default function EditorPage() {
-  const { selected, stripSize, addSticker } = useBooth();
+  const {
+    selected,
+    stripSize,
+    photos,
+    placed,
+    texts,
+    filter,
+    addSticker,
+    addText,
+    setFilter,
+  } = useBooth();
 
   if (selected.length < stripSize) {
     return (
@@ -22,6 +42,13 @@ export default function EditorPage() {
         </Link>
       </main>
     );
+  }
+
+  function handleDownload() {
+    const stripPhotos = selected
+      .map((id) => photos.find((p) => p.id === id)?.src)
+      .filter(Boolean) as string[];
+    downloadStrip({ photos: stripPhotos, stickers: placed, texts, filter });
   }
 
   return (
@@ -40,6 +67,8 @@ export default function EditorPage() {
             const s = STARTER_STICKERS.find((x) => x.id === id);
             if (s) addSticker(s.emoji);
           }}
+          onAddText={addText}
+          onFilter={(f) => setFilter(FILTER_MAP[f] ?? "none")}
         />
       </div>
 
@@ -50,7 +79,10 @@ export default function EditorPage() {
         >
           Back
         </Link>
-        <button className="flex items-center gap-2 rounded-full bg-berry px-8 py-3 font-heading text-white shadow-md">
+        <button
+          onClick={handleDownload}
+          className="flex items-center gap-2 rounded-full bg-berry px-8 py-3 font-heading text-white shadow-md"
+        >
           <Download className="h-5 w-5" />
           Download
         </button>
