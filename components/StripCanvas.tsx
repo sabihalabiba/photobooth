@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import StripPreview from "@/components/StripPreview";
 import { useBooth } from "@/lib/store";
+import { CSS_FILTERS } from "@/lib/filters";
 
 export default function StripCanvas() {
   const {
@@ -13,21 +14,29 @@ export default function StripCanvas() {
     moveSticker,
     resizeSticker,
     removeSticker,
+    texts,
+    moveText,
+    removeText,
+    filter,
   } = useBooth();
 
   const boxRef = useRef<HTMLDivElement>(null);
   const dragging = useRef<string | null>(null);
+  const draggingText = useRef<string | null>(null);
 
   function onMove(e: React.PointerEvent) {
-    if (!dragging.current || !boxRef.current) return;
+    if (!boxRef.current) return;
+    if (!dragging.current && !draggingText.current) return;
     const r = boxRef.current.getBoundingClientRect();
-    const x = ((e.clientX - r.left) / r.width) * 100;
-    const y = ((e.clientY - r.top) / r.height) * 100;
-    moveSticker(
-      dragging.current,
-      Math.min(100, Math.max(0, x)),
-      Math.min(100, Math.max(0, y))
-    );
+    const x = Math.min(100, Math.max(0, ((e.clientX - r.left) / r.width) * 100));
+    const y = Math.min(100, Math.max(0, ((e.clientY - r.top) / r.height) * 100));
+    if (dragging.current) moveSticker(dragging.current, x, y);
+    if (draggingText.current) moveText(draggingText.current, x, y);
+  }
+
+  function stopDrag() {
+    dragging.current = null;
+    draggingText.current = null;
   }
 
   return (
@@ -37,10 +46,13 @@ export default function StripCanvas() {
         className="relative w-40"
         onPointerDown={() => selectSticker(null)}
         onPointerMove={onMove}
-        onPointerUp={() => (dragging.current = null)}
-        onPointerLeave={() => (dragging.current = null)}
+        onPointerUp={stopDrag}
+        onPointerLeave={stopDrag}
       >
-        <StripPreview />
+        {/* filter shudhu strip er upor, sticker ar text e na */}
+        <div style={{ filter: CSS_FILTERS[filter] }}>
+          <StripPreview />
+        </div>
 
         {placed.map((p) => (
           <div
@@ -64,7 +76,42 @@ export default function StripCanvas() {
                 : ""
             }`}
           >
-            {p.emoji}
+            {p.src ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={p.src}
+                alt="sticker"
+                draggable={false}
+                style={{ width: p.size, maxWidth: "none" }}
+              />
+            ) : (
+              p.emoji
+            )}
+          </div>
+        ))}
+
+        {texts.map((t) => (
+          <div
+            key={t.id}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              e.currentTarget.setPointerCapture(e.pointerId);
+              draggingText.current = t.id;
+              selectSticker(null);
+            }}
+            onDoubleClick={() => removeText(t.id)}
+            title="Double-click to delete"
+            style={{
+              left: `${t.x}%`,
+              top: `${t.y}%`,
+              fontSize: t.size,
+              color: t.color,
+              transform: "translate(-50%, -50%)",
+              touchAction: "none",
+            }}
+            className="absolute cursor-grab select-none whitespace-nowrap leading-none"
+          >
+            {t.text}
           </div>
         ))}
       </div>
@@ -96,7 +143,9 @@ export default function StripCanvas() {
             </button>
           </>
         ) : (
-          <p className="text-sm">Tap a sticker to move or resize it.</p>
+          <p className="text-sm">
+            Tap a sticker to move or resize it. Double-click text to delete.
+          </p>
         )}
       </div>
     </div>
