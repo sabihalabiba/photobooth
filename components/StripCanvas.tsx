@@ -1,10 +1,75 @@
 "use client";
 
-import { useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import StripPreview from "@/components/StripPreview";
 import { useBooth } from "@/lib/store";
+import type { Stroke } from "@/lib/store";
 import { CSS_FILTERS } from "@/lib/filters";
+import { drawStrokes } from "@/lib/drawStrokes";
+
+function DrawLayer() {
+  const { strokes, drawMode, brushColor, brushSize, addStroke } = useBooth();
+  const ref = useRef<HTMLCanvasElement>(null);
+  const current = useRef<Stroke | null>(null);
+
+  const paint = useCallback(() => {
+    const c = ref.current;
+    if (!c) return;
+    const w = c.clientWidth;
+    const h = c.clientHeight;
+    const dpr = 2;
+    c.width = w * dpr;
+    c.height = h * dpr;
+    const ctx = c.getContext("2d")!;
+    ctx.scale(dpr, dpr);
+    drawStrokes(ctx, w, h, current.current ? [...strokes, current.current] : strokes);
+  }, [strokes]);
+
+  useEffect(() => {
+    paint();
+  }, [paint]);
+
+  function pt(e: React.PointerEvent) {
+    const r = ref.current!.getBoundingClientRect();
+    return {
+      x: Math.min(100, Math.max(0, ((e.clientX - r.left) / r.width) * 100)),
+      y: Math.min(100, Math.max(0, ((e.clientY - r.top) / r.height) * 100)),
+    };
+  }
+
+  return (
+    <canvas
+      ref={ref}
+      className="absolute inset-0 h-full w-full"
+      style={{
+        pointerEvents: drawMode ? "auto" : "none",
+        cursor: drawMode ? "crosshair" : "default",
+        touchAction: "none",
+      }}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        e.currentTarget.setPointerCapture(e.pointerId);
+        current.current = {
+          id: crypto.randomUUID(),
+          color: brushColor,
+          width: brushSize,
+          points: [pt(e)],
+        };
+        paint();
+      }}
+      onPointerMove={(e) => {
+        if (!current.current) return;
+        current.current.points.push(pt(e));
+        paint();
+      }}
+      onPointerUp={() => {
+        if (current.current) addStroke(current.current);
+        current.current = null;
+      }}
+    />
+  );
+}
 
 export default function StripCanvas() {
   const {
@@ -18,6 +83,7 @@ export default function StripCanvas() {
     moveText,
     removeText,
     filter,
+    drawMode,
   } = useBooth();
 
   const boxRef = useRef<HTMLDivElement>(null);
@@ -39,6 +105,8 @@ export default function StripCanvas() {
     draggingText.current = null;
   }
 
+  const itemPointer = drawMode ? "none" : "auto";
+
   return (
     <div className="flex flex-col items-center gap-4">
       <div
@@ -49,10 +117,11 @@ export default function StripCanvas() {
         onPointerUp={stopDrag}
         onPointerLeave={stopDrag}
       >
-        {/* filter shudhu strip er upor, sticker ar text e na */}
         <div style={{ filter: CSS_FILTERS[filter] }}>
           <StripPreview />
         </div>
+
+        <DrawLayer />
 
         {placed.map((p) => (
           <div
@@ -69,6 +138,7 @@ export default function StripCanvas() {
               fontSize: p.size,
               transform: "translate(-50%, -50%)",
               touchAction: "none",
+              pointerEvents: itemPointer,
             }}
             className={`absolute cursor-grab select-none leading-none ${
               selectedSticker === p.id
@@ -108,6 +178,7 @@ export default function StripCanvas() {
               color: t.color,
               transform: "translate(-50%, -50%)",
               touchAction: "none",
+              pointerEvents: itemPointer,
             }}
             className="absolute cursor-grab select-none whitespace-nowrap leading-none"
           >
@@ -116,7 +187,6 @@ export default function StripCanvas() {
         ))}
       </div>
 
-      {/* Controls for the selected sticker */}
       <div className="flex h-10 items-center gap-2">
         {selectedSticker ? (
           <>
@@ -144,7 +214,9 @@ export default function StripCanvas() {
           </>
         ) : (
           <p className="text-sm">
-            Tap a sticker to move or resize it. Double-click text to delete.
+            {drawMode
+              ? "Drawing mode on: strip er upor ankho."
+              : "Tap a sticker to move or resize it. Double-click text to delete."}
           </p>
         )}
       </div>

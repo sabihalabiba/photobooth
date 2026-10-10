@@ -1,25 +1,32 @@
 import { create } from "zustand";
+import type { ThemeId } from "./themes";
 
 export type Photo = { id: string; src: string };
-
 export type FilterName = "none" | "bw" | "vintage" | "warm" | "cool";
 
 export type PlacedSticker = {
   id: string;
-  emoji: string; // image sticker hole "" thake
-  src?: string; // cutout sticker er image (data URL)
-  x: number; // percent across the strip
-  y: number; // percent down the strip
-  size: number; // px
+  emoji: string;
+  src?: string;
+  x: number;
+  y: number;
+  size: number;
 };
 
 export type PlacedText = {
   id: string;
   text: string;
-  x: number; // percent
-  y: number; // percent
-  size: number; // px
+  x: number;
+  y: number;
+  size: number;
   color: string;
+};
+
+export type Stroke = {
+  id: string;
+  color: string;
+  width: number; // px, 160px wide preview er hishebe
+  points: { x: number; y: number }[]; // percent
 };
 
 export const MAX_PHOTOS = 8;
@@ -27,11 +34,18 @@ export const MAX_PHOTOS = 8;
 type BoothState = {
   stripSize: 3 | 4;
   photos: Photo[];
-  selected: string[]; // photo ids, in the order picked
+  selected: string[];
   placed: PlacedSticker[];
   selectedSticker: string | null;
   texts: PlacedText[];
   filter: FilterName;
+  theme: ThemeId;
+  strokes: Stroke[];
+  redoStrokes: Stroke[];
+  drawMode: boolean;
+  brushColor: string;
+  brushSize: number;
+  cutouts: string[]; // bg-removed sticker image, sticker sheet er jonno
 
   setStripSize: (n: 3 | 4) => void;
   addPhoto: (src: string) => void;
@@ -50,6 +64,17 @@ type BoothState = {
   removeText: (id: string) => void;
 
   setFilter: (f: FilterName) => void;
+  setTheme: (t: ThemeId) => void;
+
+  setDrawMode: (on: boolean) => void;
+  setBrushColor: (c: string) => void;
+  setBrushSize: (n: number) => void;
+  addStroke: (s: Stroke) => void;
+  undo: () => void;
+  redo: () => void;
+  clearStrokes: () => void;
+
+  addCutout: (src: string) => void;
 };
 
 export const useBooth = create<BoothState>((set) => ({
@@ -60,6 +85,13 @@ export const useBooth = create<BoothState>((set) => ({
   selectedSticker: null,
   texts: [],
   filter: "none",
+  theme: "classic",
+  strokes: [],
+  redoStrokes: [],
+  drawMode: false,
+  brushColor: "#ff4d94",
+  brushSize: 3,
+  cutouts: [],
 
   setStripSize: (n) =>
     set((s) => ({ stripSize: n, selected: s.selected.slice(0, n) })),
@@ -107,7 +139,7 @@ export const useBooth = create<BoothState>((set) => ({
     set((s) => {
       const id = crypto.randomUUID();
       return {
-        placed: [...s.placed, { id, emoji: "", src, x: 50, y: 50, size: 90 }],
+        placed: [...s.placed, { id, emoji: "", src, x: 50, y: 50, size: 60 }],
         selectedSticker: id,
       };
     }),
@@ -138,14 +170,7 @@ export const useBooth = create<BoothState>((set) => ({
     set((s) => ({
       texts: [
         ...s.texts,
-        {
-          id: crypto.randomUUID(),
-          text,
-          x: 50,
-          y: 50,
-          size: 28,
-          color: "#000000",
-        },
+        { id: crypto.randomUUID(), text, x: 50, y: 50, size: 14, color: "#000000" },
       ],
     })),
 
@@ -158,4 +183,36 @@ export const useBooth = create<BoothState>((set) => ({
     set((s) => ({ texts: s.texts.filter((t) => t.id !== id) })),
 
   setFilter: (f) => set({ filter: f }),
+  setTheme: (t) => set({ theme: t }),
+
+  setDrawMode: (on) => set({ drawMode: on }),
+  setBrushColor: (c) => set({ brushColor: c }),
+  setBrushSize: (n) => set({ brushSize: n }),
+
+  addStroke: (stroke) =>
+    set((s) => ({ strokes: [...s.strokes, stroke], redoStrokes: [] })),
+
+  undo: () =>
+    set((s) => {
+      if (!s.strokes.length) return s;
+      const last = s.strokes[s.strokes.length - 1];
+      return {
+        strokes: s.strokes.slice(0, -1),
+        redoStrokes: [...s.redoStrokes, last],
+      };
+    }),
+
+  redo: () =>
+    set((s) => {
+      if (!s.redoStrokes.length) return s;
+      const last = s.redoStrokes[s.redoStrokes.length - 1];
+      return {
+        strokes: [...s.strokes, last],
+        redoStrokes: s.redoStrokes.slice(0, -1),
+      };
+    }),
+
+  clearStrokes: () => set({ strokes: [], redoStrokes: [] }),
+
+  addCutout: (src) => set((s) => ({ cutouts: [...s.cutouts, src] })),
 }));

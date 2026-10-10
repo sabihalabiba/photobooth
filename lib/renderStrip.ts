@@ -1,18 +1,20 @@
-import type { PlacedSticker, PlacedText, FilterName } from "./store";
+import type { PlacedSticker, PlacedText, FilterName, Stroke } from "./store";
+import type { Theme } from "./themes";
 import { CSS_FILTERS, applyPixelFilter } from "./filters";
+import { drawStrokes } from "./drawStrokes";
 
-// StripPreview.tsx er layout (px)
 const W = 160;
 const PAD = 12;
 const GAP = 8;
 const PW = W - PAD * 2; // 136
 const PH = (PW * 3) / 4; // 102
 const FOOTER = 16;
-const SCALE = 4; // output = 640px wide
+const SCALE = 4;
 
 const loadImage = (src: string) =>
   new Promise<HTMLImageElement>((res, rej) => {
     const i = new Image();
+    i.crossOrigin = "anonymous"; // Supabase URL e canvas taint na hoy
     i.onload = () => res(i);
     i.onerror = rej;
     i.src = src;
@@ -20,11 +22,7 @@ const loadImage = (src: string) =>
 
 function roundRectPath(
   ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number
+  x: number, y: number, w: number, h: number, r: number
 ) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -40,45 +38,65 @@ export async function renderStrip(opts: {
   stickers: PlacedSticker[];
   texts: PlacedText[];
   filter: FilterName;
+  theme: Theme;
+  strokes: Stroke[];
 }): Promise<Blob> {
-  const { photos, stickers, texts, filter } = opts;
+  const { photos, stickers, texts, filter, theme, strokes } = opts;
   const n = photos.length;
   const H = PAD * 2 + n * PH + n * GAP + FOOTER;
+  const bw = theme.photoBorderWidth;
 
-  // 1) strip (background + photos + footer) alada canvas e
+  // 1) base: background + photos + footer
   const base = document.createElement("canvas");
   base.width = W * SCALE;
   base.height = H * SCALE;
   const b = base.getContext("2d")!;
   b.scale(SCALE, SCALE);
 
-  b.fillStyle = "#ffffff";
+  const grad = b.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, theme.bg[0]);
+  grad.addColorStop(1, theme.bg[1]);
+  b.fillStyle = grad;
   roundRectPath(b, 0, 0, W, H, 8);
   b.fill();
 
   for (let i = 0; i < n; i++) {
     const img = await loadImage(photos[i]);
     const y = PAD + i * (PH + GAP);
-    // object-cover er moto crop
-    const r = Math.max(PW / img.width, PH / img.height);
-    const sw = PW / r;
-    const sh = PH / r;
-    const sx = (img.width - sw) / 2;
-    const sy = (img.height - sh) / 2;
+    const ix = PAD + bw, iy = y + bw, iw = PW - bw * 2, ih = PH - bw * 2;
+    const r = Math.max(iw / img.width, ih / img.height);
+    const sw = iw / r, sh = ih / r;
+    const sx = (img.width - sw) / 2, sy = (img.height - sh) / 2;
+
     b.save();
-    roundRectPath(b, PAD, y, PW, PH, 4);
+    roundRectPath(b, ix, iy, iw, ih, 3);
     b.clip();
-    b.drawImage(img, sx, sy, sw, sh, PAD, y, PW, PH);
+    b.drawImage(img, sx, sy, sw, sh, ix, iy, iw, ih);
     b.restore();
+
+    if (bw > 0) {
+      b.strokeStyle = theme.photoBorder;
+      b.lineWidth = bw;
+      roundRectPath(b, PAD + bw / 2, y + bw / 2, PW - bw, PH - bw, 4);
+      b.stroke();
+    }
   }
 
-  b.fillStyle = "#000000";
-  b.font = "12px sans-serif";
+  b.fillStyle = theme.textColor;
+  b.font = `12px ${theme.font}`;
   b.textAlign = "center";
   b.textBaseline = "middle";
-  b.fillText("photobooth studio", W / 2, PAD + n * (PH + GAP) + FOOTER / 2);
+  b.fillText(theme.footer, W / 2, PAD + n * (PH + GAP) + FOOTER / 2);
 
-  // 2) final canvas: strip e filter, tarpor sticker ar text (filter chhara)
+  if (theme.overlay) {
+    try {
+      b.drawImage(await loadImage(theme.overlay), 0, 0, W, H);
+    } catch {
+      /* frame image nai, skip */
+    }
+  }
+
+  // 2) final: base e filter, tarpor drawing, sticker, text (filter chhara)
   const out = document.createElement("canvas");
   out.width = W * SCALE;
   out.height = H * SCALE;
@@ -90,7 +108,6 @@ export async function renderStrip(opts: {
       ctx.drawImage(base, 0, 0);
       ctx.filter = "none";
     } else {
-      // Safari fallback
       applyPixelFilter(b, base.width, base.height, filter);
       ctx.drawImage(base, 0, 0);
     }
@@ -99,6 +116,8 @@ export async function renderStrip(opts: {
   }
 
   ctx.scale(SCALE, SCALE);
+
+  drawStrokes(ctx, W, H, strokes);
 
   for (const s of stickers) {
     const cx = (s.x / 100) * W;
