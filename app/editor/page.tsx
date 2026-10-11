@@ -7,6 +7,7 @@ import EditorToolbar from "@/components/EditorToolbar";
 import { STARTER_STICKERS } from "@/lib/stickers";
 import { useBooth } from "@/lib/store";
 import type { FilterName } from "@/lib/store";
+import { THEMES } from "@/lib/themes";
 import { downloadStrip } from "@/lib/renderStrip";
 
 const FILTER_MAP: Record<string, FilterName> = {
@@ -25,7 +26,10 @@ export default function EditorPage() {
     placed,
     texts,
     filter,
+    theme,
+    strokes,
     addSticker,
+    addImageSticker,
     addText,
     setFilter,
   } = useBooth();
@@ -44,11 +48,24 @@ export default function EditorPage() {
     );
   }
 
-  function handleDownload() {
+  async function handleDownload() {
     const stripPhotos = selected
       .map((id) => photos.find((p) => p.id === id)?.src)
       .filter(Boolean) as string[];
-    downloadStrip({ photos: stripPhotos, stickers: placed, texts, filter });
+
+    try {
+      await downloadStrip({
+        photos: stripPhotos,
+        stickers: placed,
+        texts,
+        filter,
+        theme: THEMES[theme] ?? THEMES.classic,
+        strokes,
+      });
+    } catch (err) {
+      console.error(err);
+      alert("Sorry, the download failed. Please try again.");
+    }
   }
 
   return (
@@ -65,7 +82,9 @@ export default function EditorPage() {
         <EditorToolbar
           onAddSticker={(id) => {
             const s = STARTER_STICKERS.find((x) => x.id === id);
-            if (s) addSticker(s.emoji);
+            if (!s) return;
+            if (s.src) addImageSticker(s.src);
+            else if (s.emoji) addSticker(s.emoji);
           }}
           onAddText={addText}
           onFilter={(f) => setFilter(FILTER_MAP[f] ?? "none")}
