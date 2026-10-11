@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { useBooth, MAX_PHOTOS } from '@/lib/store';
+import { MAX_PHOTOS, useBooth } from '@/lib/store';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -53,7 +53,7 @@ export default function CameraView() {
 
   function capture() {
     const v = videoRef.current;
-    if (!v || !v.videoWidth) return;
+    if (!v || !v.videoWidth || full) return;
     const c = document.createElement('canvas');
     c.width = v.videoWidth;
     c.height = v.videoHeight;
@@ -67,7 +67,7 @@ export default function CameraView() {
     addPhoto(c.toDataURL('image/jpeg', 0.92));
   }
 
-  // 3-2-1, tarpor capture + flash
+  // 3-2-1, then capture + flash
   async function shoot() {
     for (let n = 3; n >= 1; n--) {
       if (!mounted.current) return;
@@ -107,7 +107,7 @@ export default function CameraView() {
 
   function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || full) return;
     const r = new FileReader();
     r.onload = () => addPhoto(r.result as string);
     r.readAsDataURL(file);
@@ -117,17 +117,17 @@ export default function CameraView() {
   const disabled = count !== null || full;
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col items-center gap-4">
       {error ? (
-        <p className="rounded-xl bg-pink-100 p-4 text-center text-sm">{error}</p>
+        <p className="rounded-xl bg-blush p-4 text-center text-sm">{error}</p>
       ) : (
-        <div className="relative w-full max-w-md">
+        <div className="relative w-full">
           <video
             ref={videoRef}
             autoPlay
             playsInline
             muted
-            className="w-full rounded-2xl bg-black"
+            className="aspect-[4/3] w-full rounded-2xl bg-black object-cover"
             style={{ transform: facing === 'user' ? 'scaleX(-1)' : 'none' }}
           />
           {count !== null && (
@@ -145,12 +145,12 @@ export default function CameraView() {
         }`}
       />
 
-      <div className="flex flex-wrap justify-center gap-2">
+      <div className="flex flex-wrap items-center justify-center gap-2">
         {!error && (
           <button
             onClick={startOne}
             disabled={disabled}
-            className="rounded-full bg-pink-500 px-6 py-2 text-white disabled:opacity-50"
+            className="rounded-full bg-berry px-6 py-2 font-heading text-white shadow-lg transition hover:scale-105 disabled:opacity-40"
           >
             Capture
           </button>
@@ -159,7 +159,7 @@ export default function CameraView() {
           <button
             onClick={autoStrip}
             disabled={disabled}
-            className="rounded-full bg-purple-500 px-6 py-2 text-white disabled:opacity-50"
+            className="rounded-full bg-sky px-6 py-2 font-heading disabled:opacity-40"
           >
             Auto strip ({stripSize})
           </button>
@@ -168,20 +168,27 @@ export default function CameraView() {
           <button
             onClick={() => setFacing(facing === 'user' ? 'environment' : 'user')}
             disabled={count !== null}
-            className="rounded-full border px-4 py-2 disabled:opacity-50"
+            className="rounded-full bg-blush px-4 py-2 font-heading text-sm disabled:opacity-40"
           >
             Flip camera
           </button>
         )}
-        <label className="cursor-pointer rounded-full border px-4 py-2">
+        <label
+          className={`rounded-full bg-blush px-4 py-2 font-heading text-sm ${
+            full ? 'opacity-40' : 'cursor-pointer'
+          }`}
+        >
           Upload
-          <input type="file" accept="image/*" hidden onChange={onUpload} />
+          <input type="file" accept="image/*" hidden disabled={full} onChange={onUpload} />
         </label>
+        <span className="w-12 font-heading text-lg">
+          {photoCount}/{MAX_PHOTOS}
+        </span>
       </div>
 
       {full && (
         <p className="text-sm">
-          {MAX_PHOTOS} ta photo hoye geche. Ekta delete koro, ba strip er jonno photo select koro.
+          You have {MAX_PHOTOS} photos. Delete one, or pick photos for your strip.
         </p>
       )}
     </div>

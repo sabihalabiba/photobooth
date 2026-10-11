@@ -82,7 +82,15 @@ export default function EditorToolbar({ onAddSticker, onAddText, onFilter }: Pro
                 aria-label={s.label}
                 className="rounded-xl bg-cream p-3 text-3xl transition hover:scale-110"
               >
-                {s.emoji}
+                {s.src ? (
+                  <img
+                    src={s.src}
+                    alt={s.label}
+                    className="mx-auto h-10 w-10 object-contain"
+                  />
+                ) : (
+                  s.emoji
+                )}
               </button>
             ))}
           </div>
