@@ -1,12 +1,8 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-<<<<<<< HEAD
 import { MAX_PHOTOS, useBooth } from '@/lib/store';
-=======
-import { useBooth, MAX_PHOTOS } from '@/lib/store';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
->>>>>>> origin/main
 
 export default function CameraView() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -16,11 +12,6 @@ export default function CameraView() {
 
   const [facing, setFacing] = useState<'user' | 'environment'>('user');
   const [error, setError] = useState<string | null>(null);
-<<<<<<< HEAD
-  const addPhoto = useBooth((s) => s.addPhoto);
-  const count = useBooth((s) => s.photos.length);
-  const full = count >= MAX_PHOTOS;
-=======
   const [count, setCount] = useState<number | null>(null);
   const [flash, setFlash] = useState(false);
 
@@ -35,7 +26,6 @@ export default function CameraView() {
       mounted.current = false;
     };
   }, []);
->>>>>>> origin/main
 
   useEffect(() => {
     let cancelled = false;
@@ -77,7 +67,7 @@ export default function CameraView() {
     addPhoto(c.toDataURL('image/jpeg', 0.92));
   }
 
-  // 3-2-1, tarpor capture + flash
+  // 3-2-1, then capture + flash
   async function shoot() {
     for (let n = 3; n >= 1; n--) {
       if (!mounted.current) return;
@@ -131,38 +121,13 @@ export default function CameraView() {
       {error ? (
         <p className="rounded-xl bg-blush p-4 text-center text-sm">{error}</p>
       ) : (
-<<<<<<< HEAD
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          className="aspect-[4/3] w-full rounded-2xl bg-black object-cover"
-          style={{ transform: facing === 'user' ? 'scaleX(-1)' : 'none' }}
-        />
-      )}
-      <div className="flex items-center gap-3">
-        {!error && (
-          <button
-            onClick={() => setFacing(facing === 'user' ? 'environment' : 'user')}
-            className="rounded-full bg-blush px-4 py-2 font-heading text-sm"
-          >
-            Flip camera
-          </button>
-        )}
-        {!error && (
-          <button
-            onClick={capture}
-            disabled={full}
-            className="rounded-full bg-berry px-8 py-3 font-heading text-white shadow-lg transition hover:scale-105 disabled:opacity-40"
-=======
-        <div className="relative w-full max-w-md">
+        <div className="relative w-full">
           <video
             ref={videoRef}
             autoPlay
             playsInline
             muted
-            className="w-full rounded-2xl bg-black"
+            className="aspect-[4/3] w-full rounded-2xl bg-black object-cover"
             style={{ transform: facing === 'user' ? 'scaleX(-1)' : 'none' }}
           />
           {count !== null && (
@@ -180,29 +145,21 @@ export default function CameraView() {
         }`}
       />
 
-      <div className="flex flex-wrap justify-center gap-2">
+      <div className="flex flex-wrap items-center justify-center gap-2">
         {!error && (
           <button
             onClick={startOne}
             disabled={disabled}
-            className="rounded-full bg-pink-500 px-6 py-2 text-white disabled:opacity-50"
->>>>>>> origin/main
+            className="rounded-full bg-berry px-6 py-2 font-heading text-white shadow-lg transition hover:scale-105 disabled:opacity-40"
           >
             Capture
           </button>
         )}
-<<<<<<< HEAD
-        <label
-          className={`rounded-full bg-blush px-4 py-2 font-heading text-sm ${
-            full ? 'opacity-40' : 'cursor-pointer'
-          }`}
-        >
-=======
         {!error && (
           <button
             onClick={autoStrip}
             disabled={disabled}
-            className="rounded-full bg-purple-500 px-6 py-2 text-white disabled:opacity-50"
+            className="rounded-full bg-sky px-6 py-2 font-heading disabled:opacity-40"
           >
             Auto strip ({stripSize})
           </button>
@@ -211,24 +168,27 @@ export default function CameraView() {
           <button
             onClick={() => setFacing(facing === 'user' ? 'environment' : 'user')}
             disabled={count !== null}
-            className="rounded-full border px-4 py-2 disabled:opacity-50"
+            className="rounded-full bg-blush px-4 py-2 font-heading text-sm disabled:opacity-40"
           >
             Flip camera
           </button>
         )}
-        <label className="cursor-pointer rounded-full border px-4 py-2">
->>>>>>> origin/main
+        <label
+          className={`rounded-full bg-blush px-4 py-2 font-heading text-sm ${
+            full ? 'opacity-40' : 'cursor-pointer'
+          }`}
+        >
           Upload
           <input type="file" accept="image/*" hidden disabled={full} onChange={onUpload} />
         </label>
         <span className="w-12 font-heading text-lg">
-          {count}/{MAX_PHOTOS}
+          {photoCount}/{MAX_PHOTOS}
         </span>
       </div>
 
       {full && (
         <p className="text-sm">
-          {MAX_PHOTOS} ta photo hoye geche. Ekta delete koro, ba strip er jonno photo select koro.
+          You have {MAX_PHOTOS} photos. Delete one, or pick photos for your strip.
         </p>
       )}
     </div>
