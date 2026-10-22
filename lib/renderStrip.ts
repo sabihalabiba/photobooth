@@ -45,6 +45,10 @@ export async function renderStrip(opts: {
   const n = photos.length;
   const H = PAD * 2 + n * PH + n * GAP + FOOTER;
   const bw = theme.photoBorderWidth;
+  const wins =
+    theme.windows && n === 3 && theme.windows.length === 3 ? theme.windows : null;
+
+  await document.fonts.load(`16px ${theme.font}`);
 
   // 1) base: background + photos + footer
   const base = document.createElement("canvas");
@@ -62,19 +66,32 @@ export async function renderStrip(opts: {
 
   for (let i = 0; i < n; i++) {
     const img = await loadImage(photos[i]);
-    const y = PAD + i * (PH + GAP);
-    const ix = PAD + bw, iy = y + bw, iw = PW - bw * 2, ih = PH - bw * 2;
+    let y: number, ix: number, iy: number, iw: number, ih: number;
+    if (wins) {
+      const w = wins[i];
+      ix = w.x / SCALE;
+      iy = w.y / SCALE;
+      iw = w.w / SCALE;
+      ih = w.h / SCALE;
+      y = iy;
+    } else {
+      y = PAD + i * (PH + GAP);
+      ix = PAD + bw;
+      iy = y + bw;
+      iw = PW - bw * 2;
+      ih = PH - bw * 2;
+    }
     const r = Math.max(iw / img.width, ih / img.height);
     const sw = iw / r, sh = ih / r;
     const sx = (img.width - sw) / 2, sy = (img.height - sh) / 2;
 
     b.save();
-    roundRectPath(b, ix, iy, iw, ih, 3);
+    roundRectPath(b, ix, iy, iw, ih, wins ? 0 : 3);
     b.clip();
     b.drawImage(img, sx, sy, sw, sh, ix, iy, iw, ih);
     b.restore();
 
-    if (bw > 0) {
+    if (bw > 0 && !wins) {
       b.strokeStyle = theme.photoBorder;
       b.lineWidth = bw;
       roundRectPath(b, PAD + bw / 2, y + bw / 2, PW - bw, PH - bw, 4);
@@ -83,7 +100,7 @@ export async function renderStrip(opts: {
   }
 
   b.fillStyle = theme.textColor;
-  b.font = `12px ${theme.font}`;
+  b.font = `14px ${theme.font}`;
   b.textAlign = "center";
   b.textBaseline = "middle";
   b.fillText(theme.footer, W / 2, PAD + n * (PH + GAP) + FOOTER / 2);
