@@ -9,14 +9,15 @@ export default function CameraView() {
   const streamRef = useRef<MediaStream | null>(null);
   const busy = useRef(false);
   const mounted = useRef(true);
+  const stopRef = useRef(false);
 
   const [facing, setFacing] = useState<'user' | 'environment'>('user');
   const [error, setError] = useState<string | null>(null);
   const [count, setCount] = useState<number | null>(null);
   const [flash, setFlash] = useState(false);
+  const [auto, setAuto] = useState(false);
 
   const addPhoto = useBooth((s) => s.addPhoto);
-  const stripSize = useBooth((s) => s.stripSize);
   const photoCount = useBooth((s) => s.photos.length);
   const full = photoCount >= MAX_PHOTOS;
 
@@ -70,11 +71,17 @@ export default function CameraView() {
   // 3-2-1, then capture + flash
   async function shoot() {
     for (let n = 3; n >= 1; n--) {
-      if (!mounted.current) return;
+      if (!mounted.current || stopRef.current) {
+        setCount(null);
+        return;
+      }
       setCount(n);
       await sleep(1000);
     }
-    if (!mounted.current) return;
+    if (!mounted.current || stopRef.current) {
+      setCount(null);
+      return;
+    }
     setCount(null);
     capture();
     setFlash(true);
@@ -84,6 +91,7 @@ export default function CameraView() {
   async function startOne() {
     if (busy.current || full) return;
     busy.current = true;
+    stopRef.current = false;
     try {
       await shoot();
     } finally {
@@ -91,18 +99,29 @@ export default function CameraView() {
     }
   }
 
+  // keeps shooting until the tray has MAX_PHOTOS photos (or you press Stop)
   async function autoStrip() {
     if (busy.current) return;
     busy.current = true;
+    stopRef.current = false;
+    setAuto(true);
     try {
-      for (let i = 0; i < stripSize; i++) {
-        if (useBooth.getState().photos.length >= MAX_PHOTOS) break;
+      while (
+        useBooth.getState().photos.length < MAX_PHOTOS &&
+        !stopRef.current &&
+        mounted.current
+      ) {
         await shoot();
         await sleep(700);
       }
     } finally {
       busy.current = false;
+      if (mounted.current) setAuto(false);
     }
+  }
+
+  function stopAuto() {
+    stopRef.current = true;
   }
 
   function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -114,7 +133,7 @@ export default function CameraView() {
     e.target.value = '';
   }
 
-  const disabled = count !== null || full;
+  const disabled = count !== null || full || auto;
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -155,19 +174,27 @@ export default function CameraView() {
             Capture
           </button>
         )}
-        {!error && (
+        {!error && !auto && (
           <button
             onClick={autoStrip}
             disabled={disabled}
             className="rounded-full bg-sky px-6 py-2 font-heading disabled:opacity-40"
           >
-            Auto strip ({stripSize})
+            Auto strip ({MAX_PHOTOS - photoCount})
+          </button>
+        )}
+        {!error && auto && (
+          <button
+            onClick={stopAuto}
+            className="rounded-full bg-ink px-6 py-2 font-heading text-white"
+          >
+            Stop
           </button>
         )}
         {!error && (
           <button
             onClick={() => setFacing(facing === 'user' ? 'environment' : 'user')}
-            disabled={count !== null}
+            disabled={count !== null || auto}
             className="rounded-full bg-blush px-4 py-2 font-heading text-sm disabled:opacity-40"
           >
             Flip camera
