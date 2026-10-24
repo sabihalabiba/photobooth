@@ -47,7 +47,7 @@ export default function SheetPage() {
     return (
       <main className="mx-auto max-w-md px-6 py-20 text-center">
         <p className="font-heading text-xl">
-          Age kichu cutout sticker banao (Remove background).
+          Make a cutout sticker first (use "Remove background" in the editor).
         </p>
         <Link
           href="/editor"

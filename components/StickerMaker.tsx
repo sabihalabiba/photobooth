@@ -18,7 +18,7 @@ export default function StickerMaker({ photo }: { photo: string }) {
       setCut(result);
       addCutout(result); // sticker sheet er jonno
     } catch {
-      setError('Background remove hoy ni. Internet check koro, abar try koro.');
+      setError('Could not remove the background. Check your internet and try again.');
     } finally {
       setLoading(false);
     }

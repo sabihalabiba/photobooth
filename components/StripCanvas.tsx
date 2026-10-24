@@ -215,7 +215,7 @@ export default function StripCanvas() {
         ) : (
           <p className="text-sm">
             {drawMode
-              ? "Drawing mode on: strip er upor ankho."
+              ? "Drawing mode on: draw on your strip."
               : "Tap a sticker to move or resize it. Double-click text to delete."}
           </p>
         )}
