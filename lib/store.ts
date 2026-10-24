@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { ThemeId } from "./themes";
+import type { TextFontId } from "./fonts";
 
 export type Photo = { id: string; src: string };
 export type FilterName = "none" | "bw" | "vintage" | "warm" | "cool";
@@ -11,6 +12,7 @@ export type PlacedSticker = {
   x: number;
   y: number;
   size: number;
+  rotation: number; // degrees
 };
 
 export type PlacedText = {
@@ -20,6 +22,8 @@ export type PlacedText = {
   y: number;
   size: number;
   color: string;
+  font: TextFontId;
+  rotation: number; // degrees
 };
 
 export type Stroke = {
@@ -31,6 +35,8 @@ export type Stroke = {
 
 export const MAX_PHOTOS = 8;
 
+const clampAngle = (d: number) => Math.max(-180, Math.min(180, Math.round(d)));
+
 type BoothState = {
   stripSize: 3 | 4;
   photos: Photo[];
@@ -38,6 +44,8 @@ type BoothState = {
   placed: PlacedSticker[];
   selectedSticker: string | null;
   texts: PlacedText[];
+  selectedText: string | null;
+  textFont: TextFontId;
   filter: FilterName;
   theme: ThemeId;
   strokes: Stroke[];
@@ -56,12 +64,18 @@ type BoothState = {
   addImageSticker: (src: string) => void;
   moveSticker: (id: string, x: number, y: number) => void;
   resizeSticker: (id: string, delta: number) => void;
+  rotateSticker: (id: string, deg: number) => void;
   removeSticker: (id: string) => void;
   selectSticker: (id: string | null) => void;
 
   addText: (text: string) => void;
   moveText: (id: string, x: number, y: number) => void;
+  resizeText: (id: string, delta: number) => void;
+  rotateText: (id: string, deg: number) => void;
   removeText: (id: string) => void;
+  selectText: (id: string | null) => void;
+  setTextFont: (f: TextFontId) => void;
+  clearSelection: () => void;
 
   setFilter: (f: FilterName) => void;
   setTheme: (t: ThemeId) => void;
@@ -84,6 +98,8 @@ export const useBooth = create<BoothState>((set) => ({
   placed: [],
   selectedSticker: null,
   texts: [],
+  selectedText: null,
+  textFont: "classic",
   filter: "none",
   theme: "classic",
   strokes: [],
@@ -129,9 +145,11 @@ export const useBooth = create<BoothState>((set) => ({
             x: 50 + (Math.random() - 0.5) * 20,
             y: 50 + (Math.random() - 0.5) * 30,
             size: 36,
+            rotation: 0,
           },
         ],
         selectedSticker: id,
+        selectedText: null,
       };
     }),
 
@@ -139,8 +157,12 @@ export const useBooth = create<BoothState>((set) => ({
     set((s) => {
       const id = crypto.randomUUID();
       return {
-        placed: [...s.placed, { id, emoji: "", src, x: 50, y: 50, size: 60 }],
+        placed: [
+          ...s.placed,
+          { id, emoji: "", src, x: 50, y: 50, size: 60, rotation: 0 },
+        ],
         selectedSticker: id,
+        selectedText: null,
       };
     }),
 
@@ -158,29 +180,90 @@ export const useBooth = create<BoothState>((set) => ({
       ),
     })),
 
+  rotateSticker: (id, deg) =>
+    set((s) => ({
+      placed: s.placed.map((p) =>
+        p.id === id ? { ...p, rotation: clampAngle(deg) } : p
+      ),
+    })),
+
   removeSticker: (id) =>
     set((s) => ({
       placed: s.placed.filter((p) => p.id !== id),
       selectedSticker: null,
     })),
 
-  selectSticker: (id) => set({ selectedSticker: id }),
+  selectSticker: (id) =>
+    set((s) => ({
+      selectedSticker: id,
+      selectedText: id ? null : s.selectedText,
+    })),
 
   addText: (text) =>
-    set((s) => ({
-      texts: [
-        ...s.texts,
-        { id: crypto.randomUUID(), text, x: 50, y: 50, size: 14, color: "#000000" },
-      ],
-    })),
+    set((s) => {
+      const id = crypto.randomUUID();
+      return {
+        texts: [
+          ...s.texts,
+          {
+            id,
+            text,
+            x: 50,
+            y: 50,
+            size: 16,
+            color: "#000000",
+            font: s.textFont,
+            rotation: 0,
+          },
+        ],
+        selectedText: id,
+        selectedSticker: null,
+      };
+    }),
 
   moveText: (id, x, y) =>
     set((s) => ({
       texts: s.texts.map((t) => (t.id === id ? { ...t, x, y } : t)),
     })),
 
+  resizeText: (id, delta) =>
+    set((s) => ({
+      texts: s.texts.map((t) =>
+        t.id === id
+          ? { ...t, size: Math.min(48, Math.max(8, t.size + delta)) }
+          : t
+      ),
+    })),
+
+  rotateText: (id, deg) =>
+    set((s) => ({
+      texts: s.texts.map((t) =>
+        t.id === id ? { ...t, rotation: clampAngle(deg) } : t
+      ),
+    })),
+
   removeText: (id) =>
-    set((s) => ({ texts: s.texts.filter((t) => t.id !== id) })),
+    set((s) => ({
+      texts: s.texts.filter((t) => t.id !== id),
+      selectedText: s.selectedText === id ? null : s.selectedText,
+    })),
+
+  selectText: (id) =>
+    set((s) => ({
+      selectedText: id,
+      selectedSticker: id ? null : s.selectedSticker,
+    })),
+
+  // changes the font for new text, and for the selected text if there is one
+  setTextFont: (f) =>
+    set((s) => ({
+      textFont: f,
+      texts: s.selectedText
+        ? s.texts.map((t) => (t.id === s.selectedText ? { ...t, font: f } : t))
+        : s.texts,
+    })),
+
+  clearSelection: () => set({ selectedSticker: null, selectedText: null }),
 
   setFilter: (f) => set({ filter: f }),
   setTheme: (t) => set({ theme: t }),

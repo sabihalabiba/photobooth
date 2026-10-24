@@ -2,6 +2,7 @@ import type { PlacedSticker, PlacedText, FilterName, Stroke } from "./store";
 import type { Theme } from "./themes";
 import { CSS_FILTERS, applyPixelFilter } from "./filters";
 import { drawStrokes } from "./drawStrokes";
+import { FONT_BY_ID, canvasFont } from "./fonts";
 
 const W = 160;
 const PAD = 12;
@@ -139,26 +140,51 @@ export async function renderStrip(opts: {
   for (const s of stickers) {
     const cx = (s.x / 100) * W;
     const cy = (s.y / 100) * H;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(((s.rotation ?? 0) * Math.PI) / 180);
     if (s.src) {
       const img = await loadImage(s.src);
       const w = s.size;
       const h = (img.height / img.width) * w;
-      ctx.drawImage(img, cx - w / 2, cy - h / 2, w, h);
+      ctx.drawImage(img, -w / 2, -h / 2, w, h);
     } else {
       ctx.font = `${s.size}px serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillStyle = "#000000";
-      ctx.fillText(s.emoji, cx, cy);
+      ctx.fillText(s.emoji, 0, 0);
     }
+    ctx.restore();
   }
 
   for (const t of texts) {
-    ctx.font = `${t.size}px sans-serif`;
-    ctx.fillStyle = t.color;
+    const fd = FONT_BY_ID[t.font] ?? FONT_BY_ID.classic;
+    const font = canvasFont(fd.id, t.size);
+    try {
+      await document.fonts.load(font, t.text);
+    } catch {
+      /* font failed to load, fall back to the default */
+    }
+    const label = fd.uppercase ? t.text.toUpperCase() : t.text;
+
+    ctx.save();
+    ctx.translate((t.x / 100) * W, (t.y / 100) * H);
+    ctx.rotate(((t.rotation ?? 0) * Math.PI) / 180);
+    ctx.font = font;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(t.text, (t.x / 100) * W, (t.y / 100) * H);
+    if (fd.outline) {
+      ctx.lineJoin = "round";
+      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = "#000000";
+      ctx.strokeText(label, 0, 0);
+      ctx.fillStyle = "#ffffff";
+    } else {
+      ctx.fillStyle = t.color;
+    }
+    ctx.fillText(label, 0, 0);
+    ctx.restore();
   }
 
   return new Promise((res) => out.toBlob((blob) => res(blob!), "image/png"));

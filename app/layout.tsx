@@ -29,7 +29,7 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
         <link
-          href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Gaegu:wght@400;700&family=Patrick+Hand&family=Special+Elite&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Anton&family=Caveat:wght@600&family=Chewy&family=Gaegu:wght@400;700&family=Montserrat:wght@700&family=Patrick+Hand&family=Playfair+Display:ital,wght@1,600&family=Special+Elite&display=swap"
           rel="stylesheet"
         />
       </head>
