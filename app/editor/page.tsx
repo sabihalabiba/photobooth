@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Download } from "lucide-react";
 import StripCanvas from "@/components/StripCanvas";
 import EditorToolbar from "@/components/EditorToolbar";
+import StickerMaker from "@/components/StickerMaker";
 import { STARTER_STICKERS } from "@/lib/stickers";
 import { useBooth } from "@/lib/store";
 import type { FilterName } from "@/lib/store";
@@ -28,11 +30,13 @@ export default function EditorPage() {
     filter,
     theme,
     strokes,
+    cutouts,
     addSticker,
     addImageSticker,
     addText,
     setFilter,
   } = useBooth();
+  const [cutPhoto, setCutPhoto] = useState<string | null>(null);
 
   if (selected.length < stripSize) {
     return (
@@ -48,11 +52,11 @@ export default function EditorPage() {
     );
   }
 
-  async function handleDownload() {
-    const stripPhotos = selected
-      .map((id) => photos.find((p) => p.id === id)?.src)
-      .filter(Boolean) as string[];
+  const stripPhotos = selected
+    .map((id) => photos.find((p) => p.id === id)?.src)
+    .filter(Boolean) as string[];
 
+  async function handleDownload() {
     try {
       await downloadStrip({
         photos: stripPhotos,
@@ -106,6 +110,46 @@ export default function EditorPage() {
           Download
         </button>
       </div>
+
+      {/* Cutout stickers */}
+      <section className="mt-12 rounded-2xl bg-white p-5 shadow">
+        <h2 className="font-heading text-xl text-berry">
+          Make a sticker from your photo
+        </h2>
+        <p className="mt-1 text-sm">
+          Pick a photo, remove its background, then add it to your strip or to
+          your sticker sheet. The first time can take a minute and needs
+          internet.
+        </p>
+
+        <div className="mt-4 flex flex-wrap gap-3">
+          {stripPhotos.map((src, i) => (
+            <button
+              key={i}
+              onClick={() => setCutPhoto(src)}
+              className={`overflow-hidden rounded-xl border-4 ${
+                cutPhoto === src ? "border-berry" : "border-transparent"
+              }`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={src} alt={`Photo ${i + 1}`} className="h-20 w-28 object-cover" />
+            </button>
+          ))}
+        </div>
+
+        {cutPhoto && (
+          <div className="mt-4">
+            <StickerMaker key={cutPhoto} photo={cutPhoto} />
+          </div>
+        )}
+
+        <Link
+          href="/sheet"
+          className="mt-4 inline-block rounded-full bg-blush px-6 py-2 font-heading"
+        >
+          Open sticker sheet ({cutouts.length})
+        </Link>
+      </section>
     </main>
   );
 }

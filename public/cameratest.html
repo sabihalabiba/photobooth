@@ -1,0 +1,27 @@
+<!doctype html>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<body style="font-family:sans-serif;padding:16px">
+<h3>Camera test</h3>
+<button id="go" style="font-size:20px;padding:12px 20px">Start camera</button>
+<pre id="log" style="white-space:pre-wrap"></pre>
+<video id="v" autoplay playsinline muted style="width:100%;background:#000;margin-top:12px"></video>
+<script>
+const log = t => document.getElementById('log').textContent += t + '\n';
+log('secure context: ' + window.isSecureContext);
+log('mediaDevices: ' + !!navigator.mediaDevices);
+document.getElementById('go').onclick = async () => {
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    log('got stream, video tracks: ' + s.getVideoTracks().length);
+    const t = s.getVideoTracks()[0];
+    log('track: ' + t.label + ' / ' + t.readyState + ' / muted=' + t.muted);
+    const v = document.getElementById('v');
+    v.srcObject = s;
+    await v.play();
+    log('playing');
+    setTimeout(() => log('video size: ' + v.videoWidth + 'x' + v.videoHeight), 1000);
+  } catch (e) {
+    log('ERROR: ' + e.name + ' - ' + e.message);
+  }
+};
+</script>
