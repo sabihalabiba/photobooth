@@ -30,25 +30,48 @@ export default function CameraView() {
 
   useEffect(() => {
     let cancelled = false;
-    async function start() {
-      streamRef.current?.getTracks().forEach((t) => t.stop());
+
+    // small delay so the dev server's double-run never starts the camera twice (iPhone bug)
+    const timer = setTimeout(async () => {
       try {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          setError('This browser cannot use the camera here. Open the site in Safari or Chrome over HTTPS, or upload a photo instead.');
+          return;
+        }
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          video: { facingMode: facing },
           audio: false,
         });
-        if (cancelled) return stream.getTracks().forEach((t) => t.stop());
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
         streamRef.current = stream;
         setError(null);
-        if (videoRef.current) videoRef.current.srcObject = stream;
-      } catch {
-        setError('Camera access denied or not available. Please allow camera permission, or upload a photo instead.');
+        const v = videoRef.current;
+        if (v) {
+          v.muted = true; // iPhones only autoplay muted video
+          v.setAttribute('playsinline', 'true');
+          v.srcObject = stream;
+          try {
+            await v.play();
+          } catch {
+            /* Safari may need a tap, which is fine */
+          }
+        }
+      } catch (err) {
+        const name = err instanceof Error ? err.name : 'Error';
+        setError(
+          `Camera problem (${name}). Please allow camera permission, or upload a photo instead.`
+        );
       }
-    }
-    start();
+    }, 200);
+
     return () => {
       cancelled = true;
+      clearTimeout(timer);
       streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
     };
   }, [facing]);
 
@@ -146,6 +169,7 @@ export default function CameraView() {
             autoPlay
             playsInline
             muted
+            onLoadedMetadata={(e) => e.currentTarget.play().catch(() => {})}
             className="aspect-[4/3] w-full rounded-2xl bg-black object-cover"
             style={{ transform: facing === 'user' ? 'scaleX(-1)' : 'none' }}
           />

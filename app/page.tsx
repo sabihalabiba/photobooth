@@ -81,9 +81,9 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="px-6 py-8 text-center text-sm">
-        Made with love by Labiba &amp; Toshrif
+      <footer className="px-6 py-8 text-center font-heading text-lg text-berry">
+        Snap it. Stick it. Keep it.
       </footer>
-    </main>
+          </main>
   );
 }
