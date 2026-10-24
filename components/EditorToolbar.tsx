@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { STARTER_STICKERS } from "@/lib/stickers";
 import { THEME_LIST } from "@/lib/themes";
+import { TEXT_FONTS } from "@/lib/fonts";
 import { useBooth } from "@/lib/store";
 
 const FILTERS = ["None", "B&W", "Vintage", "Warm", "Cool"];
@@ -48,6 +49,9 @@ export default function EditorToolbar({ onAddSticker, onAddText, onFilter }: Pro
     clearStrokes,
     strokes,
     redoStrokes,
+    textFont,
+    setTextFont,
+    selectedText,
   } = useBooth();
 
   useEffect(() => {
@@ -98,6 +102,32 @@ export default function EditorToolbar({ onAddSticker, onAddText, onFilter }: Pro
 
         {tab === "text" && (
           <div className="flex flex-col gap-3">
+            <p className="text-xs">
+              {selectedText
+                ? "A text is selected: pick a font to change it."
+                : "Pick a font, type your text, then tap Add text."}
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {TEXT_FONTS.map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setTextFont(f.id)}
+                  className={`rounded-xl border-2 px-3 py-2 text-lg leading-tight ${
+                    textFont === f.id
+                      ? "border-berry bg-blush/50"
+                      : "border-transparent bg-cream"
+                  }`}
+                  style={{
+                    fontFamily: f.family,
+                    fontWeight: f.weight,
+                    fontStyle: f.style,
+                    textTransform: f.uppercase ? "uppercase" : "none",
+                  }}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
             <input
               value={text}
               onChange={(e) => setText(e.target.value)}
