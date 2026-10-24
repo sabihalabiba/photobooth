@@ -19,16 +19,37 @@ const steps = [
   },
 ];
 
-function StripExample({ color, tilt }: { color: string; tilt: string }) {
+const examples = [
+  { src: "/examples/cutee.png", name: "Cute", tilt: "-rotate-6" },
+  { src: "/examples/vintage.png", name: "Vintage", tilt: "rotate-3" },
+  { src: "/examples/y2k.png", name: "Y2K", tilt: "-rotate-2" },
+  { src: "/examples/retro.png", name: "Retro Film", tilt: "rotate-6" },
+  { src: "/examples/scrapbook.png", name: "Scrapbook", tilt: "-rotate-3" },
+];
+
+function Example({
+  src,
+  name,
+  tilt,
+}: {
+  src: string;
+  name: string;
+  tilt: string;
+}) {
   return (
-    <div
-      className={`${color} ${tilt} flex w-28 flex-col gap-2 rounded-lg p-2 shadow-lg`}
+    <figure
+      className={`${tilt} w-32 shrink-0 transition hover:z-10 hover:rotate-0 hover:scale-110 sm:w-40`}
     >
-      {[0, 1, 2].map((i) => (
-        <div key={i} className="aspect-[4/3] rounded bg-white/70" />
-      ))}
-      <p className="text-center font-heading text-xs text-ink">photobooth</p>
-    </div>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={`${name} photo strip`}
+        className="w-full rounded-lg shadow-xl"
+      />
+      <figcaption className="mt-2 text-center font-heading text-sm">
+        {name}
+      </figcaption>
+    </figure>
   );
 }
 
@@ -53,10 +74,10 @@ export default function Home() {
       </section>
 
       {/* Examples */}
-      <section className="flex flex-wrap items-center justify-center gap-6 px-6 pb-16">
-        <StripExample color="bg-blush" tilt="-rotate-6" />
-        <StripExample color="bg-sky" tilt="rotate-3" />
-        <StripExample color="bg-white" tilt="-rotate-2" />
+      <section className="flex flex-wrap items-start justify-center gap-6 px-6 pb-16">
+        {examples.map((e) => (
+          <Example key={e.name} {...e} />
+        ))}
       </section>
 
       {/* How it works */}
@@ -84,6 +105,6 @@ export default function Home() {
       <footer className="px-6 py-8 text-center font-heading text-lg text-berry">
         Snap it. Stick it. Keep it.
       </footer>
-          </main>
+    </main>
   );
 }
