@@ -10,7 +10,7 @@ const steps = [
   {
     icon: Images,
     title: "Pick your favorites",
-    text: "Choose 3 or 4 for your photobooth strip.",
+    text: "Choose your 3 favorites for the strip.",
   },
   {
     icon: Sparkles,
